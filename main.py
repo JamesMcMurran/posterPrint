@@ -249,3 +249,9 @@ class PosterTilerApp:
             y = border_px + height - (overlap_px // 2)
             draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
             draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = PosterTilerApp(root)
+    root.mainloop()
