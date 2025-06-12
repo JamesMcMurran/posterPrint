@@ -28,6 +28,7 @@ class PosterTilerApp:
 
         self.preview_label = None
         self.output_pdf_var = tk.BooleanVar(value=False)
+        self.ruler_marks_var = tk.BooleanVar(value=True)
         self.create_widgets()
 
     def create_widgets(self):
@@ -85,8 +86,7 @@ class PosterTilerApp:
         self.corner_marks_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(frm, text="Add Corner Xs", variable=self.corner_marks_var).grid(column=0, row=8, sticky="w")
 
-        self.edge_xs_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(frm, text="Add Edge Xs", variable=self.edge_xs_var).grid(column=1, row=8, sticky="w")
+        ttk.Checkbutton(frm, text="Add Ruler Marks", variable=self.ruler_marks_var).grid(column=1, row=8, sticky="w")
 
         self.output_pdf_checkbox = ttk.Checkbutton(frm, text="Output as PDF", variable=self.output_pdf_var)
         self.output_pdf_checkbox.grid(column=0, row=9, sticky="w")
@@ -125,9 +125,11 @@ class PosterTilerApp:
             height_in = self.custom_height_var.get()
             rows = self.rows_var.get()
             cols = self.cols_var.get()
+            overlap_in = self.overlap_in_var.get()
 
             tile_width_px = int(width_in * dpi)
             tile_height_px = int(height_in * dpi)
+            overlap_px = int(overlap_in * dpi)
             total_width_px = tile_width_px * cols
             total_height_px = tile_height_px * rows
 
@@ -139,7 +141,23 @@ class PosterTilerApp:
             if abs(img_ratio - target_ratio) > 0.05:
                 messagebox.showwarning("Aspect Ratio Warning", "The input image ratio doesn't match the output tiling layout. The image will be stretched to fit.")
 
-            preview_img = img.resize((300, int(300 * img_height / img_width)))
+            # Resize image to the final tiling dimensions before creating the preview
+            img = img.resize((total_width_px, total_height_px))
+            preview_width = 300
+            preview_height = int(total_height_px * preview_width / total_width_px)
+            preview_img = img.resize((preview_width, preview_height))
+
+            # Draw grid lines to show how the image will be cut
+            draw = ImageDraw.Draw(preview_img)
+            step_x = tile_width_px - overlap_px
+            step_y = tile_height_px - overlap_px
+            for c in range(1, cols):
+                x = int(c * step_x * preview_width / total_width_px)
+                draw.line((x, 0, x, preview_height), fill="black")
+            for r in range(1, rows):
+                y = int(r * step_y * preview_height / total_height_px)
+                draw.line((0, y, preview_width, y), fill="black")
+
             preview_img = ImageTk.PhotoImage(preview_img)
             self.preview_label.configure(image=preview_img)
             self.preview_label.image = preview_img
@@ -191,8 +209,8 @@ class PosterTilerApp:
                 draw = ImageDraw.Draw(canvas)
                 if self.corner_marks_var.get():
                     self.draw_corner_xs(draw, 0, 0, canvas_width, canvas_height, row, col)
-                if self.edge_xs_var.get():
-                    self.draw_overlap_xs(draw, border_px, tile_width_px, tile_height_px, overlap_px, row, col, rows, cols)
+                if self.ruler_marks_var.get():
+                    self.draw_ruler_marks(draw, border_px, tile_width_px, tile_height_px, dpi)
 
                 filename = f"tile_{count:02}.jpg"
                 filepath = os.path.join(OUTPUT_FOLDER, filename)
@@ -231,17 +249,65 @@ class PosterTilerApp:
             draw.line((x - size, y + size, x + size, y - size), fill="black", width=1)
 
     def draw_overlap_xs(self, draw, border_px, width, height, overlap_px, row, col, rows, cols):
+        """Draw X marks centered in the tile's overlap regions."""
         size = 6
-        if col < cols - 1:
-            # Draw alignment mark just outside the right image edge, vertically centered
-            x = border_px + width + (overlap_px // 2)
-            y = border_px + height // 2
-            draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
-            draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
 
-        if row < rows - 1:
-            # Draw alignment mark just below the image edge, horizontally centered
-            x = border_px + width // 2
-            y = border_px + height + (overlap_px // 2)
-            draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
-            draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
+        # Horizontal overlap (right edge of the tile)
+        if col < cols - 1 and overlap_px > 0:
+            # Center of the overlapped area on the right side
+            x = int(border_px + width - (overlap_px / 2))
+            y = int(border_px + height / 2)
+            draw.line((x - size, y - size, x + size, y + size), fill="red", width=3)
+            draw.line((x - size, y + size, x + size, y - size), fill="red", width=3)
+
+        # Vertical overlap (bottom edge of the tile)
+        if row < rows - 1 and overlap_px > 0:
+            # Center of the overlapped area on the bottom side
+            x = int(border_px + width / 2)
+            y = int(border_px + height - (overlap_px / 2))
+            draw.line((x - size, y - size, x + size, y + size), fill="red", width=3)
+            draw.line((x - size, y + size, x + size, y - size), fill="red", width=3)
+
+    def draw_ruler_marks(self, draw, border_px, width, height, dpi):
+        """Draw ruler tick marks right next to the image border."""
+        interval = dpi / 16
+
+        def tick_length(i, base):
+            if i % 16 == 0:
+                return base
+            elif i % 8 == 0:
+                return int(base * 0.75)
+            elif i % 4 == 0:
+                return int(base * 0.5)
+            elif i % 2 == 0:
+                return int(base * 0.4)
+            return int(base * 0.25)
+
+        start_x = border_px
+        start_y = border_px
+        end_x = border_px + width
+        end_y = border_px + height
+
+        max_ticks_x = int(width / interval) + 1
+        for i in range(max_ticks_x):
+            x = int(start_x + i * interval)
+            if x > end_x:
+                break
+            length = tick_length(i, border_px)
+            draw.line((x, start_y, x, start_y + length), fill="black")
+            draw.line((x, end_y - length, x, end_y), fill="black")
+
+        max_ticks_y = int(height / interval) + 1
+        for i in range(max_ticks_y):
+            y = int(start_y + i * interval)
+            if y > end_y:
+                break
+            length = tick_length(i, border_px)
+            draw.line((start_x, y, start_x + length, y), fill="black")
+            draw.line((end_x - length, y, end_x, y), fill="black")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = PosterTilerApp(root)
+    root.mainloop()

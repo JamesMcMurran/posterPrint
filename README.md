@@ -10,8 +10,8 @@ This is a Python desktop application for slicing large images into printable til
 - 🖨️ Output to image files **and/or** multipage PDF
 - 📐 Customizable tile size via preset or custom paper dimensions
 - 📏 Adjustable DPI, margins, and overlap
-- 🎯 Corner and overlap alignment marks for easy trimming and matching
-- 🔍 Live preview of the first tile
+- 🎯 Corner alignment marks and optional ruler ticks for precise trimming
+- 🔍 Live preview with grid overlay of the tiling layout
 - 📁 Auto-opens output folder when finished
 
 ---
