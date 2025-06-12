@@ -231,17 +231,21 @@ class PosterTilerApp:
             draw.line((x - size, y + size, x + size, y - size), fill="black", width=1)
 
     def draw_overlap_xs(self, draw, border_px, width, height, overlap_px, row, col, rows, cols):
+        """Draw X marks in the center of the overlap regions inside a tile."""
         size = 6
-        if col < cols - 1:
-            # Draw alignment mark just outside the right image edge, vertically centered
-            x = border_px + width + (overlap_px // 2)
+
+        # Horizontal overlap (right edge of the tile)
+        if col < cols - 1 and overlap_px > 0:
+            # Center of the overlapped area on the right side
+            x = border_px + width - (overlap_px // 2)
             y = border_px + height // 2
             draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
             draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
 
-        if row < rows - 1:
-            # Draw alignment mark just below the image edge, horizontally centered
+        # Vertical overlap (bottom edge of the tile)
+        if row < rows - 1 and overlap_px > 0:
+            # Center of the overlapped area on the bottom side
             x = border_px + width // 2
-            y = border_px + height + (overlap_px // 2)
+            y = border_px + height - (overlap_px // 2)
             draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
             draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
