@@ -255,6 +255,7 @@ class PosterTilerApp:
             draw.line((x - size, y - size, x + size, y + size), fill="red", width=3)
             draw.line((x - size, y + size, x + size, y - size), fill="red", width=3)
 
+
     def draw_ruler_marks(self, draw, border_px, width, height, dpi):
         """Draw ruler tick marks inside the border down to 1/16-inch increments."""
         interval = dpi / 16

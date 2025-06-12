@@ -26,7 +26,6 @@ def test_draw_overlap_xs_red_pixel():
     app.draw_overlap_xs(draw, border_px=10, width=80, height=80, overlap_px=20, row=0, col=0, rows=2, cols=2)
     assert img.getpixel((80, 50)) == (255, 0, 0)
 
-
 def test_draw_overlap_xs_bottom_pixel():
     img = Image.new("RGB", (120, 120), "white")
     draw = ImageDraw.Draw(img)
