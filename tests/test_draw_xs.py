@@ -26,6 +26,21 @@ def test_draw_overlap_xs_red_pixel():
     app.draw_overlap_xs(draw, border_px=10, width=80, height=80, overlap_px=20, row=0, col=0, rows=2, cols=2)
     assert img.getpixel((80, 50)) == (255, 0, 0)
 
+def test_draw_overlap_xs_bottom_pixel():
+    img = Image.new("RGB", (120, 120), "white")
+    draw = ImageDraw.Draw(img)
+    app = PosterTilerApp.__new__(PosterTilerApp)
+    app.draw_overlap_xs(draw, border_px=10, width=80, height=80, overlap_px=20, row=0, col=0, rows=2, cols=2)
+    assert img.getpixel((50, 80)) == (255, 0, 0)
+
+
+def test_draw_ruler_marks_top_tick():
+    img = Image.new("RGB", (150, 150), "white")
+    draw = ImageDraw.Draw(img)
+    app = PosterTilerApp.__new__(PosterTilerApp)
+    app.draw_ruler_marks(draw, border_px=25, width=100, height=100, dpi=100)
+    assert img.getpixel((25, 0)) == (0, 0, 0)
+
 class DummyVar:
     def __init__(self, value):
         self._value = value
@@ -52,6 +67,7 @@ def test_generate_tiles_creates_file(tmp_path, monkeypatch):
     app.overlap_in_var = DummyVar(0)
     app.corner_marks_var = DummyVar(False)
     app.edge_xs_var = DummyVar(False)
+    app.ruler_marks_var = DummyVar(False)
     app.output_pdf_var = DummyVar(False)
     app.preview_label = type('Lbl', (), {'configure': lambda *a, **k: None})()
 

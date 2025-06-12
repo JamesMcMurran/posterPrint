@@ -28,6 +28,7 @@ class PosterTilerApp:
 
         self.preview_label = None
         self.output_pdf_var = tk.BooleanVar(value=False)
+        self.ruler_marks_var = tk.BooleanVar(value=True)
         self.create_widgets()
 
     def create_widgets(self):
@@ -87,6 +88,8 @@ class PosterTilerApp:
 
         self.edge_xs_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(frm, text="Add Edge Xs", variable=self.edge_xs_var).grid(column=1, row=8, sticky="w")
+
+        ttk.Checkbutton(frm, text="Add Ruler Marks", variable=self.ruler_marks_var).grid(column=2, row=8, sticky="w")
 
         self.output_pdf_checkbox = ttk.Checkbutton(frm, text="Output as PDF", variable=self.output_pdf_var)
         self.output_pdf_checkbox.grid(column=0, row=9, sticky="w")
@@ -193,6 +196,8 @@ class PosterTilerApp:
                     self.draw_corner_xs(draw, 0, 0, canvas_width, canvas_height, row, col)
                 if self.edge_xs_var.get():
                     self.draw_overlap_xs(draw, border_px, tile_width_px, tile_height_px, overlap_px, row, col, rows, cols)
+                if self.ruler_marks_var.get():
+                    self.draw_ruler_marks(draw, border_px, tile_width_px, tile_height_px, dpi)
 
                 filename = f"tile_{count:02}.jpg"
                 filepath = os.path.join(OUTPUT_FOLDER, filename)
@@ -231,24 +236,60 @@ class PosterTilerApp:
             draw.line((x - size, y + size, x + size, y - size), fill="black", width=1)
 
     def draw_overlap_xs(self, draw, border_px, width, height, overlap_px, row, col, rows, cols):
-        """Draw X marks in the center of the overlap regions inside a tile."""
+        """Draw X marks centered in the tile's overlap regions."""
         size = 6
 
         # Horizontal overlap (right edge of the tile)
         if col < cols - 1 and overlap_px > 0:
             # Center of the overlapped area on the right side
-            x = border_px + width - (overlap_px // 2)
-            y = border_px + height // 2
-            draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
-            draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
+            x = int(border_px + width - (overlap_px / 2))
+            y = int(border_px + height / 2)
+            draw.line((x - size, y - size, x + size, y + size), fill="red", width=3)
+            draw.line((x - size, y + size, x + size, y - size), fill="red", width=3)
 
         # Vertical overlap (bottom edge of the tile)
         if row < rows - 1 and overlap_px > 0:
             # Center of the overlapped area on the bottom side
-            x = border_px + width // 2
-            y = border_px + height - (overlap_px // 2)
-            draw.line((x - size, y - size, x + size, y + size), fill="red", width=1)
-            draw.line((x - size, y + size, x + size, y - size), fill="red", width=1)
+            x = int(border_px + width / 2)
+            y = int(border_px + height - (overlap_px / 2))
+            draw.line((x - size, y - size, x + size, y + size), fill="red", width=3)
+            draw.line((x - size, y + size, x + size, y - size), fill="red", width=3)
+
+
+    def draw_ruler_marks(self, draw, border_px, width, height, dpi):
+        """Draw ruler tick marks inside the border down to 1/16-inch increments."""
+        interval = dpi / 16
+        canvas_w = width + 2 * border_px
+        canvas_h = height + 2 * border_px
+
+        def tick_length(i, base):
+            if i % 16 == 0:
+                return base
+            elif i % 8 == 0:
+                return int(base * 0.75)
+            elif i % 4 == 0:
+                return int(base * 0.5)
+            elif i % 2 == 0:
+                return int(base * 0.4)
+            return int(base * 0.25)
+
+        max_ticks_x = int(canvas_w / interval) + 1
+        for i in range(max_ticks_x):
+            x = int(i * interval)
+            if x > canvas_w:
+                break
+            length = tick_length(i, border_px)
+            draw.line((x, 0, x, length), fill="black")
+            draw.line((x, canvas_h - length, x, canvas_h), fill="black")
+
+        max_ticks_y = int(canvas_h / interval) + 1
+        for i in range(max_ticks_y):
+            y = int(i * interval)
+            if y > canvas_h:
+                break
+            length = tick_length(i, border_px)
+            draw.line((0, y, length, y), fill="black")
+            draw.line((canvas_w - length, y, canvas_w, y), fill="black")
 
 
 if __name__ == "__main__":
