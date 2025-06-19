@@ -73,33 +73,38 @@ class PosterTilerApp:
         self.cols_var = tk.IntVar(value=DEFAULT_COLS)
         ttk.Entry(frm, textvariable=self.cols_var).grid(column=1, row=5, sticky="w")
 
-        # Border and Overlap
-        ttk.Label(frm, text="Border (in):").grid(column=0, row=6, sticky="w")
-        self.border_in_var = tk.DoubleVar(value=DEFAULT_BORDER_IN)
-        ttk.Entry(frm, textvariable=self.border_in_var).grid(column=1, row=6, sticky="w")
+        # Optional row heights input
+        ttk.Label(frm, text="Row Heights (in)").grid(column=0, row=6, sticky="w")
+        self.row_heights_var = tk.StringVar(value="")
+        ttk.Entry(frm, textvariable=self.row_heights_var, width=20).grid(column=1, row=6, sticky="w")
 
-        ttk.Label(frm, text="Overlap (in):").grid(column=0, row=7, sticky="w")
+        # Border and Overlap
+        ttk.Label(frm, text="Border (in):").grid(column=0, row=7, sticky="w")
+        self.border_in_var = tk.DoubleVar(value=DEFAULT_BORDER_IN)
+        ttk.Entry(frm, textvariable=self.border_in_var).grid(column=1, row=7, sticky="w")
+
+        ttk.Label(frm, text="Overlap (in):").grid(column=0, row=8, sticky="w")
         self.overlap_in_var = tk.DoubleVar(value=DEFAULT_OVERLAP_IN)
-        ttk.Entry(frm, textvariable=self.overlap_in_var).grid(column=1, row=7, sticky="w")
+        ttk.Entry(frm, textvariable=self.overlap_in_var).grid(column=1, row=8, sticky="w")
 
         # Checkboxes
         self.corner_marks_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(frm, text="Add Corner Xs", variable=self.corner_marks_var).grid(column=0, row=8, sticky="w")
+        ttk.Checkbutton(frm, text="Add Corner Xs", variable=self.corner_marks_var).grid(column=0, row=9, sticky="w")
 
         self.edge_xs_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(frm, text="Add Edge Xs", variable=self.edge_xs_var).grid(column=1, row=8, sticky="w")
+        ttk.Checkbutton(frm, text="Add Edge Xs", variable=self.edge_xs_var).grid(column=1, row=9, sticky="w")
 
-        ttk.Checkbutton(frm, text="Add Ruler Marks", variable=self.ruler_marks_var).grid(column=2, row=8, sticky="w")
+        ttk.Checkbutton(frm, text="Add Ruler Marks", variable=self.ruler_marks_var).grid(column=2, row=9, sticky="w")
 
         self.output_pdf_checkbox = ttk.Checkbutton(frm, text="Output as PDF", variable=self.output_pdf_var)
-        self.output_pdf_checkbox.grid(column=0, row=9, sticky="w")
+        self.output_pdf_checkbox.grid(column=0, row=10, sticky="w")
 
         # Run button
-        ttk.Button(frm, text="Generate Tiles", command=self.generate_tiles).grid(column=0, row=10, columnspan=3, pady=10)
+        ttk.Button(frm, text="Generate Tiles", command=self.generate_tiles).grid(column=0, row=11, columnspan=3, pady=10)
 
         # Preview area
         self.preview_label = ttk.Label(frm)
-        self.preview_label.grid(column=0, row=11, columnspan=3)
+        self.preview_label.grid(column=0, row=12, columnspan=3)
 
         self.paper_size_changed(self.paper_size_var.get())
 
@@ -129,10 +134,18 @@ class PosterTilerApp:
             rows = self.rows_var.get()
             cols = self.cols_var.get()
 
+            row_heights_str = self.row_heights_var.get().strip()
+            if row_heights_str:
+                row_heights_in = [float(h) for h in row_heights_str.split(',')]
+                if len(row_heights_in) != rows:
+                    raise ValueError("Row Heights must match number of rows")
+            else:
+                row_heights_in = [height_in] * rows
+
             tile_width_px = int(width_in * dpi)
-            tile_height_px = int(height_in * dpi)
+            row_heights_px = [int(h * dpi) for h in row_heights_in]
             total_width_px = tile_width_px * cols
-            total_height_px = tile_height_px * rows
+            total_height_px = sum(row_heights_px)
 
             img = Image.open(path).convert("RGB")
             img_width, img_height = img.size
@@ -167,9 +180,19 @@ class PosterTilerApp:
         border_px = int(border_in * dpi)
         overlap_px = int(overlap_in * dpi)
         tile_width_px = int(tile_width_in * dpi)
-        tile_height_px = int(tile_height_in * dpi)
+
+        row_heights_str = self.row_heights_var.get().strip()
+        if row_heights_str:
+            row_heights_in = [float(h) for h in row_heights_str.split(',')]
+            if len(row_heights_in) != rows:
+                messagebox.showerror("Invalid Input", "Row Heights must match number of rows")
+                return
+        else:
+            row_heights_in = [tile_height_in] * rows
+
+        row_heights_px = [int(h * dpi) for h in row_heights_in]
         total_width_px = tile_width_px * cols - (cols - 1) * overlap_px
-        total_height_px = tile_height_px * rows - (rows - 1) * overlap_px
+        total_height_px = sum(row_heights_px) - (rows - 1) * overlap_px
 
         img = Image.open(path).convert("RGB")
         img = img.resize((total_width_px, total_height_px))
@@ -178,16 +201,18 @@ class PosterTilerApp:
 
         pdf_images = []
         count = 1
+        y_off = 0
         for row in range(rows):
+            tile_height_px_row = row_heights_px[row]
             for col in range(cols):
                 left = col * (tile_width_px - overlap_px)
-                upper = row * (tile_height_px - overlap_px)
+                upper = y_off
                 right = left + tile_width_px
-                lower = upper + tile_height_px
+                lower = upper + tile_height_px_row
                 tile = img.crop((left, upper, right, lower))
 
                 canvas_width = tile_width_px + 2 * border_px
-                canvas_height = tile_height_px + 2 * border_px
+                canvas_height = tile_height_px_row + 2 * border_px
                 canvas = Image.new("RGB", (canvas_width, canvas_height), "white")
                 canvas.paste(tile, (border_px, border_px))
 
@@ -195,9 +220,9 @@ class PosterTilerApp:
                 if self.corner_marks_var.get():
                     self.draw_corner_xs(draw, 0, 0, canvas_width, canvas_height, row, col)
                 if self.edge_xs_var.get():
-                    self.draw_overlap_xs(draw, border_px, tile_width_px, tile_height_px, overlap_px, row, col, rows, cols)
+                    self.draw_overlap_xs(draw, border_px, tile_width_px, tile_height_px_row, overlap_px, row, col, rows, cols)
                 if self.ruler_marks_var.get():
-                    self.draw_ruler_marks(draw, border_px, tile_width_px, tile_height_px, dpi)
+                    self.draw_ruler_marks(draw, border_px, tile_width_px, tile_height_px_row, dpi)
 
                 filename = f"tile_{count:02}.jpg"
                 filepath = os.path.join(OUTPUT_FOLDER, filename)
@@ -213,6 +238,7 @@ class PosterTilerApp:
                     self.preview_label.image = preview_img
 
                 count += 1
+            y_off += tile_height_px_row - overlap_px
 
         if self.output_pdf_var.get() and pdf_images:
             pdf_path = os.path.join(OUTPUT_FOLDER, "poster_tiles.pdf")
