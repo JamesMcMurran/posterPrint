@@ -63,6 +63,7 @@ def test_generate_tiles_creates_file(tmp_path, monkeypatch):
     app.custom_height_var = DummyVar(1)
     app.rows_var = DummyVar(1)
     app.cols_var = DummyVar(1)
+    app.row_heights_var = DummyVar("")
     app.border_in_var = DummyVar(0)
     app.overlap_in_var = DummyVar(0)
     app.corner_marks_var = DummyVar(False)
